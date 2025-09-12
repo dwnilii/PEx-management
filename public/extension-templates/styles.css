@@ -95,12 +95,70 @@ body {
     justify-content: center;
 }
 
+/* Icons */
+.icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: rgba(137, 178, 232, 0.1);
+}
+
 .icon-primary { color: var(--primary); }
 .icon-destructive { color: var(--destructive); }
 
-svg {
+.icon {
     width: 48px;
     height: 48px;
+}
+
+/* Icon sizes for different contexts */
+.shield-check, .hourglass {
+    width: 48px;
+    height: 48px;
+    color: var(--primary);
+}
+
+.wifi-off {
+    width: 48px;
+    height: 48px;
+    color: var(--destructive);
+}
+
+.power {
+    width: 32px;
+    height: 32px;
+}
+
+.refresh {
+    width: 16px;
+    height: 16px;
+}
+
+/* Power button specific styles */
+.power-button {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(137, 178, 232, 0.1);
+}
+
+.power-button.connected {
+    background: rgba(76, 175, 80, 0.2);
+    color: var(--success);
+}
+
+.power-button.disconnected {
+    background: rgba(255, 68, 68, 0.2);
+    color: var(--destructive);
 }
 
 .view-title {
