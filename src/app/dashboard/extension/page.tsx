@@ -8,9 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Server, Save, Download, Building, Loader2, Wand2, Construction } from 'lucide-react';
+import { Server, Save, Download, Building, Loader2, Wand2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 import { ExtensionPreview } from '@/components/extension-preview';
 
@@ -86,7 +85,6 @@ export default function ExtensionPage() {
         reader.onload = (event) => {
           const dataUrl = event.target?.result as string;
           handleSettingChange('companyLogo', dataUrl);
-          toast({ title: "Logo Ready", description: "Logo has been updated. Click 'Save Branding' to apply." });
         };
         reader.readAsDataURL(file);
       } else {
@@ -98,13 +96,12 @@ export default function ExtensionPage() {
     const handleDownloadExtension = async () => {
         setIsBuilding(true);
         try {
-            // Create a new JSZip instance
             const zip = new JSZip();
-            
-            // Add manifest.json
+
+            // 1. Create manifest.json
             const manifest = {
                 manifest_version: 3,
-                name: allSettings.extensionName,
+                name: allSettings.extensionName || 'PEx Extension',
                 version: "1.0",
                 description: "Chrome Extension for PEx Management",
                 permissions: ["proxy", "storage", "alarms"],
@@ -119,54 +116,54 @@ export default function ExtensionPage() {
                     service_worker: "background.js"
                 },
                 icons: {
-                    "128": "icons/icon128.png"
+                    "128": "icons/icon128.png",
                 }
             };
             zip.file("manifest.json", JSON.stringify(manifest, null, 2));
-            
-            // Add popup.html (we'll create this from ExtensionPreview component)
+
+            // 2. Add main extension logic files (background, popup.js)
+            const backgroundJs = await fetch('/extension-templates/background.js').then(r => r.text());
+            zip.file("background.js", backgroundJs);
+
+            const popupJs = await fetch('/extension-templates/popup.js').then(r => r.text());
+            zip.file("popup.js", popupJs);
+
+            // 3. Add UI files (HTML, CSS)
             const popupHtml = await fetch('/extension-templates/popup.html').then(r => r.text());
             zip.file("popup.html", popupHtml);
             
-            // Add background.js
-            const backgroundJs = await fetch('/extension-templates/background.js').then(r => r.text());
-            zip.file("background.js", backgroundJs);
-            
-            // Add popup.js
-            const popupJs = await fetch('/extension-templates/popup.js').then(r => r.text());
-            zip.file("popup.js", popupJs);
-            
-            // Add styles.css
-            const styles = await fetch('/extension-templates/styles.css').then(r => r.text());
-            zip.file("styles.css", styles);
+            const stylesCss = await fetch('/extension-templates/styles.css').then(r => r.text());
+            zip.file("styles.css", stylesCss);
 
-            // Create icons directory and add logo
+            // 4. Handle and process icons
+            const iconsFolder = zip.folder("icons");
+            let logoBlob: Blob;
+
             if (allSettings.companyLogo) {
-                // Convert base64 to blob
-                const logoData = allSettings.companyLogo.split(',')[1];
-                zip.file("icons/icon128.png", logoData, {base64: true});
+                const response = await fetch(allSettings.companyLogo);
+                logoBlob = await response.blob();
             } else {
-                // Use default icon
-                const defaultIcon = await fetch(defaultIconPath).then(r => r.blob());
-                zip.file("icons/icon128.png", defaultIcon);
+                const response = await fetch(defaultIconPath);
+                logoBlob = await response.blob();
             }
-            
-            // Generate the zip file
+            iconsFolder?.file('icon128.png', logoBlob);
+
+
+            // 5. Generate and download zip
             const content = await zip.generateAsync({type: "blob"});
-            
-            // Save the file
             saveAs(content, "pex-extension.zip");
             
             toast({
                 title: "Success!",
                 description: "Extension package has been generated successfully."
             });
+
         } catch (error: any) {
             console.error('Error generating extension:', error);
             toast({
                 variant: "destructive",
                 title: "Error",
-                description: "Failed to generate extension package."
+                description: `Failed to generate extension package: ${error.message}`
             });
         } finally {
             setIsBuilding(false);
@@ -268,8 +265,8 @@ export default function ExtensionPage() {
                         <Input
                             id="id-prefix"
                             value={allSettings.idPrefix || 'USR-EXP-'}
-                            readOnly
-                            className="bg-muted/50 font-mono"
+                            onChange={(e) => handleSettingChange('idPrefix', e.target.value)}
+                            className="font-mono"
                             placeholder="e.g., USR-EXP-"
                         />
                     </div>
@@ -320,7 +317,6 @@ export default function ExtensionPage() {
                             {allSettings.companyLogo && <Image src={allSettings.companyLogo} alt="Current Logo" width={48} height={48} className="rounded-md border p-1" unoptimized/>}
                             <Input type="file" ref={fileInputRef} onChange={handleLogoChange} accept="image/*" className="hidden" />
                             <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                            <Download className="mr-2 h-4 w-4" />
                                 Upload Logo
                             </Button>
                         </div>
@@ -378,5 +374,7 @@ export default function ExtensionPage() {
     </div>
   );
 }
+
+    
 
     

@@ -1,213 +1,258 @@
-// Constants
-const API_ENDPOINT = ''; // Will be set during installation
-const STORAGE_KEYS = {
-    USER_ID: 'userId',
-    USER_NAME: 'userName',
-    USER_OU: 'userOu',
-    REGISTRATION_STATUS: 'registrationStatus',
-    CONNECTION_STATUS: 'connectionStatus',
-    LAST_SYNC: 'lastSync'
-};
 
-// DOM Elements
+'use strict';
+
 const views = {
     register: document.getElementById('register-view'),
     pending: document.getElementById('pending-view'),
     connected: document.getElementById('connected-view'),
-    error: document.getElementById('error-view')
+    error: document.getElementById('error-view'),
+    guide: document.getElementById('guide-view'),
 };
 
 const elements = {
-    title: document.querySelector('.title'),
-    userName: document.getElementById('user-name'),
-    userId: document.getElementById('user-id'),
-    registerBtn: document.getElementById('register-btn'),
-    powerBtn: document.getElementById('power-btn'),
-    retryBtn: document.getElementById('retry-btn'),
-    refreshBtn: document.getElementById('refresh-btn'),
-    connectionStatus: document.getElementById('connection-status'),
-    infoUser: document.getElementById('info-user'),
+    header: document.getElementById('header'),
+    headerName: document.getElementById('header-name'),
+    headerLogo: document.getElementById('header-logo'),
+    mainContent: document.getElementById('main-content'),
+    footer: document.getElementById('footer'),
+    // Register view
+    registerNameInput: document.getElementById('register-name'),
+    registerUserId: document.getElementById('register-userid'),
+    registerButton: document.getElementById('register-button'),
+    // Connected view
+    powerButton: document.getElementById('power-button'),
+    connectionStatusText: document.getElementById('connection-status-text'),
+    infoUserName: document.getElementById('info-user-name'),
     infoOu: document.getElementById('info-ou'),
-    infoId: document.getElementById('info-id'),
-    lastSync: document.getElementById('last-sync')
+    infoUserId: document.getElementById('info-user-id'),
+    // Error view
+    errorPanelAddress: document.getElementById('error-panel-address'),
+    errorRetryButton: document.getElementById('error-retry-button'),
+    // Guide view
+    guideButton: document.getElementById('guide-button'),
+    guideContentArea: document.getElementById('guide-content-area'),
+    backToMainButton: document.getElementById('back-to-main-button'),
+    // Footer
+    syncTime: document.getElementById('footer-sync-time'),
+    refreshButton: document.getElementById('refresh-button'),
+    refreshIcon: document.getElementById('refresh-icon'),
 };
 
-// State Management
-let currentState = {
-    userId: null,
-    userName: null,
-    userOu: null,
-    registrationStatus: 'unregistered', // unregistered, pending, approved
-    connectionStatus: 'disconnected', // connected, disconnected
-    lastSync: null
+const setView = (viewName) => {
+    Object.values(views).forEach(view => view.classList.add('hidden'));
+    if (views[viewName]) {
+        views[viewName].classList.remove('hidden');
+    }
+    // Show/hide footer based on view
+    const showFooter = ['connected', 'error', 'pending'].includes(viewName);
+    elements.footer.classList.toggle('hidden', !showFooter);
+    if(viewName === 'guide') {
+         elements.header.classList.add('hidden');
+         elements.footer.classList.add('hidden');
+    } else {
+        elements.header.classList.remove('hidden');
+    }
 };
 
-// Helper Functions
-function showView(viewName) {
-    Object.keys(views).forEach(key => {
-        views[key].classList.toggle('hidden', key !== viewName);
+const updateSyncTime = () => {
+    chrome.storage.local.get('lastSync', ({ lastSync }) => {
+        if (lastSync) {
+            const diff = Math.round((Date.now() - lastSync) / 60000);
+            elements.syncTime.textContent = `Last sync: ${diff} min ago`;
+        } else {
+            elements.syncTime.textContent = 'Last sync: never';
+        }
     });
-}
+};
 
-function generateUserId() {
-    const prefix = 'USR-EXP-';
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = prefix;
-    for (let i = 0; i < 4; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
-}
+const generateUserId = async () => {
+    const { idPrefix = 'USR-EXP-', idDigits = 4 } = await chrome.storage.local.get(['idPrefix', 'idDigits']);
+    const randomPart = Math.random().toString(36).substring(2, 2 + idDigits).toUpperCase();
+    return `${idPrefix}${randomPart}`;
+};
 
-function updateUI() {
-    // Update connection status UI
-    elements.powerBtn?.classList.toggle('connected', currentState.connectionStatus === 'connected');
-    elements.powerBtn?.classList.toggle('disconnected', currentState.connectionStatus === 'disconnected');
-    if (elements.connectionStatus) {
-        elements.connectionStatus.textContent = currentState.connectionStatus === 'connected' ? 'Connected' : 'Disconnected';
-    }
-
-    // Update info panel
-    if (elements.infoUser) elements.infoUser.textContent = currentState.userName || '';
-    if (elements.infoOu) elements.infoOu.textContent = currentState.userOu || '';
-    if (elements.infoId) elements.infoId.textContent = currentState.userId || '';
-
-    // Update last sync
-    if (currentState.lastSync) {
-        const timeAgo = Math.floor((Date.now() - currentState.lastSync) / 60000);
-        elements.lastSync.textContent = `Last sync: ${timeAgo} min ago`;
-    }
-
-    // Show appropriate view
-    if (currentState.registrationStatus === 'unregistered') {
-        showView('register');
-    } else if (currentState.registrationStatus === 'pending') {
-        showView('pending');
-    } else if (currentState.registrationStatus === 'approved') {
-        showView('connected');
-    }
-}
-
-// API Functions
-async function register(userName, userId) {
+const checkStatus = async () => {
+    elements.refreshIcon.classList.add('animate-spin');
     try {
-        const response = await fetch(`${API_ENDPOINT}/api/requests`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: userName,
-                deviceId: userId
-            })
-        });
+        const { panelAddress, userId } = await chrome.storage.local.get(['panelAddress', 'userId']);
+        if (!panelAddress || !userId) {
+            throw new Error('Initial setup required.');
+        }
 
-        if (!response.ok) throw new Error('Registration failed');
+        const response = await fetch(`${panelAddress}/api/extension/config?userId=${userId}`);
 
-        currentState.registrationStatus = 'pending';
-        currentState.userName = userName;
-        currentState.userId = userId;
-        
-        await chrome.storage.local.set({
-            [STORAGE_KEYS.REGISTRATION_STATUS]: 'pending',
-            [STORAGE_KEYS.USER_NAME]: userName,
-            [STORAGE_KEYS.USER_ID]: userId
-        });
-
-        updateUI();
-    } catch (error) {
-        console.error('Registration error:', error);
-        showView('error');
-    }
-}
-
-async function checkStatus() {
-    try {
-        const response = await fetch(`${API_ENDPOINT}/api/requests/${currentState.userId}`);
-        const data = await response.json();
-
-        if (data.status === 'approved') {
-            currentState.registrationStatus = 'approved';
-            currentState.userOu = data.ou;
-            currentState.lastSync = Date.now();
-
-            await chrome.storage.local.set({
-                [STORAGE_KEYS.REGISTRATION_STATUS]: 'approved',
-                [STORAGE_KEYS.USER_OU]: data.ou,
-                [STORAGE_KEYS.LAST_SYNC]: Date.now()
-            });
-
-            // Get proxy configuration
-            const configResponse = await fetch(`${API_ENDPOINT}/api/extension/config`);
-            const config = await configResponse.json();
-
-            // Send config to background script
-            chrome.runtime.sendMessage({
-                type: 'UPDATE_CONFIG',
-                config: config
-            });
-
-            updateUI();
+        if (response.status === 200) {
+            const config = await response.json();
+            await chrome.storage.local.set({ status: 'connected', userConfig: config, lastSync: Date.now() });
+            updateConnectedView(config);
+            setView('connected');
+        } else if (response.status === 403) {
+            const errorData = await response.json();
+            if (errorData.status === 'Pending' || errorData.status === 'Rejected') {
+                await chrome.storage.local.set({ status: 'pending', lastSync: Date.now() });
+                setView('pending');
+            } else {
+                 throw new Error('Registration not approved.');
+            }
+        } else if (response.status === 404) {
+            // User ID not found on server, reset to register
+            await chrome.storage.local.remove(['status', 'userConfig']);
+            const newUserId = await generateUserId();
+            await chrome.storage.local.set({ userId: newUserId });
+            elements.registerUserId.textContent = newUserId;
+            setView('register');
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Server responded with status ${response.status}`);
         }
     } catch (error) {
-        console.error('Status check error:', error);
-        showView('error');
+        console.error('Status check failed:', error);
+        const { panelAddress } = await chrome.storage.local.get('panelAddress');
+        elements.errorPanelAddress.value = panelAddress || '';
+        setView('error');
+    } finally {
+        updateSyncTime();
+        elements.refreshIcon.classList.remove('animate-spin');
     }
-}
+};
 
-// Event Listeners
-document.addEventListener('DOMContentLoaded', async () => {
-    // Set extension name
-    const manifest = chrome.runtime.getManifest();
-    elements.title.textContent = manifest.name;
+const updateConnectedView = (config) => {
+    if (!config) return;
+    elements.infoUserName.textContent = config.user.name;
+    elements.infoOu.textContent = config.user.ou;
+    elements.infoUserId.textContent = config.user.userId;
+    // Update guide content
+    elements.guideContentArea.innerHTML = config.guideContent || '<p>No guide content available.</p>';
+    const guideAlignment = config.guideContentAlignment || 'ltr';
+    elements.guideContentArea.setAttribute('dir', guideAlignment);
 
-    // Generate or retrieve user ID
-    const stored = await chrome.storage.local.get(null);
-    currentState = {
-        ...currentState,
-        userId: stored[STORAGE_KEYS.USER_ID] || generateUserId(),
-        userName: stored[STORAGE_KEYS.USER_NAME],
-        userOu: stored[STORAGE_KEYS.USER_OU],
-        registrationStatus: stored[STORAGE_KEYS.REGISTRATION_STATUS] || 'unregistered',
-        connectionStatus: stored[STORAGE_KEYS.CONNECTION_STATUS] || 'disconnected',
-        lastSync: stored[STORAGE_KEYS.LAST_SYNC]
-    };
+};
 
-    // Update UI with stored values
-    elements.userId.textContent = currentState.userId;
-    updateUI();
-
-    // If approved, start status polling
-    if (currentState.registrationStatus === 'approved') {
-        setInterval(checkStatus, 30000); // Check every 30 seconds
+const registerUser = async () => {
+    const name = elements.registerNameInput.value.trim();
+    if (!name) {
+        alert('Please enter your name.');
+        return;
     }
-});
 
-elements.registerBtn?.addEventListener('click', () => {
-    const userName = elements.userName?.value.trim();
-    if (userName) {
-        register(userName, currentState.userId);
+    try {
+        const { panelAddress, userId } = await chrome.storage.local.get(['panelAddress', 'userId']);
+        const response = await fetch(`${panelAddress}/api/requests`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, userName: name }),
+        });
+
+        if (response.ok || response.status === 409) { // 409 means request already exists
+            await chrome.storage.local.set({ status: 'pending', lastSync: Date.now() });
+            setView('pending');
+            updateSyncTime();
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Registration failed.');
+        }
+    } catch (error) {
+        console.error('Registration error:', error);
+        const { panelAddress } = await chrome.storage.local.get('panelAddress');
+        elements.errorPanelAddress.value = panelAddress || '';
+        setView('error');
     }
-});
+};
 
-elements.powerBtn?.addEventListener('click', () => {
-    const newStatus = currentState.connectionStatus === 'connected' ? 'disconnected' : 'connected';
-    currentState.connectionStatus = newStatus;
-    chrome.storage.local.set({ [STORAGE_KEYS.CONNECTION_STATUS]: newStatus });
+const savePanelAddressAndRetry = async () => {
+    const newAddress = elements.errorPanelAddress.value.trim();
+    if (!newAddress) {
+        alert('Please enter a panel address.');
+        return;
+    }
+    await chrome.storage.local.set({ panelAddress: newAddress });
+    await checkStatus();
+};
+
+const togglePower = async () => {
+    const { isEnabled = true } = await chrome.storage.local.get('isEnabled');
+    const newIsEnabled = !isEnabled;
+    await chrome.storage.local.set({ isEnabled: newIsEnabled });
+
+    if (newIsEnabled) {
+        elements.powerButton.classList.remove('power-button-disabled');
+        elements.powerButton.classList.add('power-button-connected');
+        elements.connectionStatusText.textContent = 'Connected';
+    } else {
+        elements.powerButton.classList.remove('power-button-connected');
+        elements.powerButton.classList.add('power-button-disabled');
+        elements.connectionStatusText.textContent = 'Disconnected';
+    }
+     // Send message to background script to update proxy settings
+    chrome.runtime.sendMessage({ action: 'toggleProxy', isEnabled: newIsEnabled });
+};
+
+
+const init = async () => {
+    // 1. Set default panel address if not present
+    let { panelAddress } = await chrome.storage.local.get('panelAddress');
+    if (!panelAddress) {
+        // This is a placeholder. In a real scenario, this would be set during build.
+        // For the preview, it uses the current window location.
+        const defaultAddress = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+        await chrome.storage.local.set({ panelAddress: defaultAddress });
+    }
+
+    // 2. Load global settings from storage
+    const { extensionName, companyLogo, isEnabled = true } = await chrome.storage.local.get(['extensionName', 'companyLogo', 'isEnabled']);
+    if (extensionName) {
+        elements.headerName.textContent = extensionName;
+    }
+    if (companyLogo) {
+        elements.headerLogo.src = companyLogo;
+    } else {
+        elements.headerLogo.src = 'icons/icon128.png';
+    }
     
-    // Notify background script
-    chrome.runtime.sendMessage({
-        type: 'TOGGLE_PROXY',
-        enabled: newStatus === 'connected'
+    // Set initial power button state
+     if (isEnabled) {
+        elements.powerButton.classList.remove('power-button-disabled');
+        elements.powerButton.classList.add('power-button-connected');
+        elements.connectionStatusText.textContent = 'Connected';
+    } else {
+        elements.powerButton.classList.remove('power-button-connected');
+        elements.powerButton.classList.add('power-button-disabled');
+        elements.connectionStatusText.textContent = 'Disconnected';
+    }
+
+
+    // 3. Determine initial view
+    const { status, userId, userConfig } = await chrome.storage.local.get(['status', 'userId', 'userConfig']);
+    
+    if (status === 'connected') {
+        updateConnectedView(userConfig);
+        setView('connected');
+        checkStatus(); // Refresh in background
+    } else if (status === 'pending') {
+        setView('pending');
+        checkStatus(); // Refresh in background
+    } else {
+        // Default to register view
+        const newUserId = await generateUserId();
+        await chrome.storage.local.set({ userId: newUserId });
+        elements.registerUserId.textContent = newUserId;
+        setView('register');
+    }
+
+    // 4. Add event listeners
+    elements.registerButton.addEventListener('click', registerUser);
+    elements.errorRetryButton.addEventListener('click', savePanelAddressAndRetry);
+    elements.refreshButton.addEventListener('click', checkStatus);
+    elements.powerButton.addEventListener('click', togglePower);
+    elements.guideButton.addEventListener('click', () => setView('guide'));
+    elements.backToMainButton.addEventListener('click', async () => {
+         const { status } = await chrome.storage.local.get('status');
+         setView(status || 'register');
     });
+
+    updateSyncTime();
+};
+
+document.addEventListener('DOMContentLoaded', init);
+
     
-    updateUI();
-});
-
-elements.retryBtn?.addEventListener('click', () => {
-    checkStatus();
-});
-
-elements.refreshBtn?.addEventListener('click', () => {
-    checkStatus();
-});
