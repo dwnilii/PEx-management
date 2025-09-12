@@ -36,7 +36,9 @@ export default function ExtensionPage() {
 
   useEffect(() => {
     // Set address from localStorage or window.location
-    setCentralPanelAddress(localStorage.getItem('pex-panel-address') || window.location.origin);
+    if (typeof window !== 'undefined') {
+        setCentralPanelAddress(localStorage.getItem('pex-panel-address') || window.location.origin);
+    }
     
     fetchSettings();
 
@@ -73,9 +75,6 @@ export default function ExtensionPage() {
     setIsAddressEditable(false);
   }
   
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      handleSettingChange('extensionName', e.target.value);
-  }
   
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -116,6 +115,9 @@ export default function ExtensionPage() {
                     service_worker: "background.js"
                 },
                 icons: {
+                    "16": "icons/icon16.png",
+                    "32": "icons/icon32.png",
+                    "48": "icons/icon48.png",
                     "128": "icons/icon128.png",
                 }
             };
@@ -146,12 +148,35 @@ export default function ExtensionPage() {
                 const response = await fetch(defaultIconPath);
                 logoBlob = await response.blob();
             }
-            iconsFolder?.file('icon128.png', logoBlob);
+            
+            const image = await createImageBitmap(logoBlob);
+            const sizes = [16, 32, 48, 128];
+
+            for (const size of sizes) {
+                const canvas = new OffscreenCanvas(size, size);
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(image, 0, 0, size, size);
+                    const blob = await canvas.convertToBlob();
+                    if (blob) {
+                       iconsFolder?.file(`icon${size}.png`, blob);
+                    }
+                }
+            }
+
+            // 5. Add other SVG icons
+            const iconFiles = ['error.svg', 'book.svg', 'refresh.svg', 'pending.svg', 'register.svg'];
+            for (const iconFile of iconFiles) {
+                const response = await fetch(`/extension-templates/icons/${iconFile}`);
+                if (!response.ok) throw new Error(`Failed to fetch ${iconFile}`);
+                const blob = await response.blob();
+                iconsFolder?.file(iconFile, blob);
+            }
 
 
-            // 5. Generate and download zip
+            // 6. Generate and download zip
             const content = await zip.generateAsync({type: "blob"});
-            saveAs(content, "pex-extension.zip");
+            saveAs(content, `PEx-Extension - ${allSettings.extensionName}.zip`);
             
             toast({
                 title: "Success!",
@@ -309,7 +334,7 @@ export default function ExtensionPage() {
                 <CardContent className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <Label htmlFor="extension-name">Extension Name</Label>
-                        <Input id="extension-name" value={allSettings.extensionName} onChange={handleNameChange} />
+                        <Input id="extension-name" value={allSettings.extensionName} onChange={(e) => handleSettingChange('extensionName', e.target.value)} />
                     </div>
                     <div className="space-y-2">
                         <Label>Extension Logo</Label>
