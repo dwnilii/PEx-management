@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>PEx Extension</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="extension-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <img src="icons/icon128.png" alt="logo" class="logo" width="24" height="24">
+                <h1 class="title"></h1>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Register View -->
+            <div id="register-view" class="view">
+                <div class="icon-container">
+                    <svg class="icon shield-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                </div>
+                <div class="content">
+                    <h2>Register Device</h2>
+                    <p>To connect, please register this device with your corporate account.</p>
+                </div>
+                <div class="form">
+                    <input type="text" id="user-name" placeholder="Your Name">
+                    <div class="id-container">
+                        <label>Your Unique ID</label>
+                        <p id="user-id"></p>
+                    </div>
+                </div>
+                <button id="register-btn" class="primary-button">Register</button>
+            </div>
+
+            <!-- Pending View -->
+            <div id="pending-view" class="view hidden">
+                <div class="icon-container">
+                    <svg class="icon hourglass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v6m0 8v6M4.93 4.93l4.24 4.24m5.66 5.66l4.24 4.24M2 12h6m8 0h6M4.93 19.07l4.24-4.24m5.66-5.66l4.24-4.24"/>
+                    </svg>
+                </div>
+                <h2>Awaiting Approval</h2>
+                <p>Your registration request has been sent. Please wait for an administrator to approve it.</p>
+            </div>
+
+            <!-- Connected View -->
+            <div id="connected-view" class="view hidden">
+                <button id="power-btn" class="power-button">
+                    <svg class="icon power" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/>
+                    </svg>
+                </button>
+                <div id="connection-status">Connected</div>
+                <p>Your traffic is being routed through the corporate proxy.</p>
+                
+                <div class="info-container">
+                    <div class="info-row">
+                        <span class="label">User:</span>
+                        <span id="info-user" class="value"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">OU:</span>
+                        <span id="info-ou" class="value"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Unique ID:</span>
+                        <span id="info-id" class="value"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error View -->
+            <div id="error-view" class="view hidden">
+                <div class="icon-container">
+                    <svg class="icon wifi-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 1l22 22m-2.09-2.09A16.88 16.88 0 0112 23c-4.76 0-9.1-2.02-12.16-5.25M8.53 8.53a10.94 10.94 0 012.12-1.32 11 11 0 012.7-.55M12 2c3.79 0 7.17 1.7 9.42 4.39"/>
+                    </svg>
+                </div>
+                <h2>Connection Failed</h2>
+                <p>Could not connect to the panel. Please check your connection.</p>
+                <button id="retry-btn" class="primary-button">Retry Connection</button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <span id="last-sync">Last sync: Never</span>
+            <button id="refresh-btn" class="icon-button">
+                <svg class="icon refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.1 8c-1.1-2.3-3.1-4.3-5.4-5.4M3 16V8c0-1.1.9-2 2-2h4M21 16V8M21 16c0 1.1-.9 2-2 2h-4M3 16c1.1 2.3 3.1 4.3 5.4 5.4"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>

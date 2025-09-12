@@ -97,8 +97,80 @@ export default function ExtensionPage() {
   
     const handleDownloadExtension = async () => {
         setIsBuilding(true);
-        toast({ title: "Build Disabled", description: "Extension generation is temporarily disabled." });
-        setIsBuilding(false);
+        try {
+            // Create a new JSZip instance
+            const zip = new JSZip();
+            
+            // Add manifest.json
+            const manifest = {
+                manifest_version: 3,
+                name: allSettings.extensionName,
+                version: "1.0",
+                description: "Chrome Extension for PEx Management",
+                permissions: ["proxy", "storage", "alarms"],
+                host_permissions: [`${centralPanelAddress}/*`],
+                action: {
+                    default_popup: "popup.html",
+                    default_icon: {
+                        "128": "icons/icon128.png"
+                    }
+                },
+                background: {
+                    service_worker: "background.js"
+                },
+                icons: {
+                    "128": "icons/icon128.png"
+                }
+            };
+            zip.file("manifest.json", JSON.stringify(manifest, null, 2));
+            
+            // Add popup.html (we'll create this from ExtensionPreview component)
+            const popupHtml = await fetch('/extension-templates/popup.html').then(r => r.text());
+            zip.file("popup.html", popupHtml);
+            
+            // Add background.js
+            const backgroundJs = await fetch('/extension-templates/background.js').then(r => r.text());
+            zip.file("background.js", backgroundJs);
+            
+            // Add popup.js
+            const popupJs = await fetch('/extension-templates/popup.js').then(r => r.text());
+            zip.file("popup.js", popupJs);
+            
+            // Add styles.css
+            const styles = await fetch('/extension-templates/styles.css').then(r => r.text());
+            zip.file("styles.css", styles);
+
+            // Create icons directory and add logo
+            if (allSettings.companyLogo) {
+                // Convert base64 to blob
+                const logoData = allSettings.companyLogo.split(',')[1];
+                zip.file("icons/icon128.png", logoData, {base64: true});
+            } else {
+                // Use default icon
+                const defaultIcon = await fetch(defaultIconPath).then(r => r.blob());
+                zip.file("icons/icon128.png", defaultIcon);
+            }
+            
+            // Generate the zip file
+            const content = await zip.generateAsync({type: "blob"});
+            
+            // Save the file
+            saveAs(content, "pex-extension.zip");
+            
+            toast({
+                title: "Success!",
+                description: "Extension package has been generated successfully."
+            });
+        } catch (error: any) {
+            console.error('Error generating extension:', error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to generate extension package."
+            });
+        } finally {
+            setIsBuilding(false);
+        }
     };
     
       const handleSettingChange = (key: string, value: any) => {
@@ -280,14 +352,7 @@ export default function ExtensionPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <Alert variant="destructive">
-                        <Construction className="h-4 w-4" />
-                        <AlertTitle>Under Construction</AlertTitle>
-                        <AlertDescription>
-                            The extension generation feature is temporarily disabled.
-                        </AlertDescription>
-                    </Alert>
-                    <Button onClick={handleDownloadExtension} disabled>
+                    <Button onClick={handleDownloadExtension} disabled={isBuilding}>
                         {isBuilding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                         {isBuilding ? 'Building...' : 'Build & Download Extension'}
                     </Button>
