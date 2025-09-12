@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PEx Extension</title>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="header" class="header">
+        <img id="header-logo" src="icons/icon128.png" alt="logo" width="24" height="24" />
+        <h1 id="header-name" class="header-name">PEx Extension</h1>
+    </div>
+
+    <div class="main-content">
+        <!-- Register View -->
+        <div id="register-view" class="view">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-primary"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <h2 class="view-title">Register Device</h2>
+            <p class="view-description">To connect, please register this device with your corporate account.</p>
+            <div class="input-group">
+                <input type="text" id="register-name-input" placeholder="Your Name" class="input-field" />
+                <div class="unique-id-box">
+                    <label class="unique-id-label">Your Unique ID</label>
+                    <p id="register-user-id" class="unique-id-text">Generating...</p>
+                </div>
+            </div>
+            <button id="register-button" class="button">Register</button>
+        </div>
+
+        <!-- Pending View -->
+        <div id="pending-view" class="view" style="display: none;">
+            <svg id="pending-spinner" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-primary spinner"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
+            <h2 class="view-title">Awaiting Approval</h2>
+            <p class="view-description">Your registration request has been sent. Please wait for an administrator to approve it.</p>
+        </div>
+
+        <!-- Connected View -->
+        <div id="connected-view" class="view" style="display: none;">
+            <button id="power-button" class="power-button-connected">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+            </button>
+            <div id="connection-status-text" class="font-semibold">Connected</div>
+            <p class="view-description">Your traffic is being routed through the corporate proxy.</p>
+            <div class="info-box">
+                <div class="info-row">
+                    <span>User:</span>
+                    <span id="connected-user-name"></span>
+                </div>
+                <div class="info-row">
+                    <span>OU:</span>
+                    <span id="connected-user-ou"></span>
+                </div>
+                <div class="info-row">
+                    <span>Unique ID:</span>
+                    <span id="connected-user-id" class="font-mono"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error View -->
+        <div id="error-view" class="view" style="display: none;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-destructive"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="4" x2="4" y1="20" y2="20"></line><line x1="1" x2="23" y1="1" y2="23"></line></svg>
+            <h2 class="view-title">Connection Failed</h2>
+            <p class="view-description">Could not connect to the panel. Please check the address.</p>
+            <div class="input-group">
+                <input type="text" id="error-panel-address" placeholder="https://panel.example.com" class="input-field" />
+                <button id="error-retry-button" class="button">Save & Retry</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="footer" class="footer">
+        <span>Last sync: never</span>
+        <button id="refresh-button" class="refresh-button">
+            <svg id="refresh-spinner" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
+        </button>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
+
+    
