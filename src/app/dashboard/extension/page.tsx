@@ -164,14 +164,8 @@ export default function ExtensionPage() {
                 }
             }
 
-            // 5. Add other SVG icons
-            const iconFiles = ['error.svg', 'book.svg', 'refresh.svg', 'pending.svg', 'register.svg'];
-            for (const iconFile of iconFiles) {
-                const response = await fetch(`/extension-templates/icons/${iconFile}`);
-                if (!response.ok) throw new Error(`Failed to fetch ${iconFile}`);
-                const blob = await response.blob();
-                iconsFolder?.file(iconFile, blob);
-            }
+            // Note: SVG icons are now embedded directly in popup.html
+            // We don't need to package them separately anymore
 
 
             // 6. Generate and download zip
